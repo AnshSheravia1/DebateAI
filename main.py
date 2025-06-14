@@ -58,16 +58,60 @@ st.title("🧠 AI Debate App")
 topic = st.text_input("Enter a topic for the debate:", value="Should AI replace teachers?")
 max_turns = st.slider("Number of Debate Turns (2-10)", min_value=2, max_value=10, value=6, step=2)
 
-if st.button("Start Debate"):
-    with st.spinner("Debating..."):
-        initial_state = {"topic": topic, "history": [], "turn": 0, "max_turns": max_turns}
-        final_state = app.invoke(initial_state)
+# Initialize session state for debate
+if 'debate_state' not in st.session_state:
+    st.session_state.debate_state = None
+if 'current_turn' not in st.session_state:
+    st.session_state.current_turn = 0
+if 'debate_history' not in st.session_state:
+    st.session_state.debate_history = []
+if 'all_turns' not in st.session_state:
+    st.session_state.all_turns = []
 
-        st.subheader("🎤 Debate Transcript")
-        history = final_state["history"]
-        for i, msg in enumerate(history, 1):
-            label = "🟢 FOR" if i % 2 != 0 else "🔴 AGAINST"
-            st.markdown(f"**Turn {i} ({label}):** {msg.content}")
+def start_new_debate():
+    # Initialize debate state
+    initial_state = {"topic": topic, "history": [], "turn": 0, "max_turns": max_turns}
+    
+    # Run the entire debate once
+    final_state = app.invoke(initial_state)
+    
+    # Store all turns
+    st.session_state.all_turns = final_state["history"]
+    st.session_state.current_turn = 1
+    st.session_state.debate_history = [st.session_state.all_turns[0]]
+
+def next_turn():
+    if st.session_state.current_turn < len(st.session_state.all_turns):
+        st.session_state.current_turn += 1
+        st.session_state.debate_history = st.session_state.all_turns[:st.session_state.current_turn]
+
+if st.button("Start Debate"):
+    start_new_debate()
+    st.rerun()
+
+# Display debate progress
+if st.session_state.all_turns:
+    st.subheader("🎤 Debate Progress")
+    st.progress(st.session_state.current_turn / max_turns)
+    st.write(f"Turn {st.session_state.current_turn} of {max_turns}")
+
+# Display current turn only
+if st.session_state.debate_history:
+    st.subheader("🎤 Current Turn")
+    current_message = st.session_state.debate_history[-1]
+    label = "🟢 FOR" if len(st.session_state.debate_history) % 2 != 0 else "🔴 AGAINST"
+    st.markdown(f"**{label}:** {current_message.content}")
+
+# Show Next Turn button only if there are more turns
+if (st.session_state.all_turns and 
+    st.session_state.current_turn < len(st.session_state.all_turns)):
+    if st.button("Next Turn"):
+        next_turn()
+        st.rerun()
+
+# Show completion message
+if st.session_state.all_turns and st.session_state.current_turn >= len(st.session_state.all_turns):
+    st.success("🎉 Debate completed! Click 'Start Debate' to begin a new one.")
 
 
 
