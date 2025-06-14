@@ -85,6 +85,11 @@ def next_turn():
         st.session_state.current_turn += 1
         st.session_state.debate_history = st.session_state.all_turns[:st.session_state.current_turn]
 
+def previous_turn():
+    if st.session_state.current_turn > 1:
+        st.session_state.current_turn -= 1
+        st.session_state.debate_history = st.session_state.all_turns[:st.session_state.current_turn]
+
 if st.button("Start Debate"):
     start_new_debate()
     st.rerun()
@@ -102,12 +107,20 @@ if st.session_state.debate_history:
     label = "🟢 FOR" if len(st.session_state.debate_history) % 2 != 0 else "🔴 AGAINST"
     st.markdown(f"**{label}:** {current_message.content}")
 
-# Show Next Turn button only if there are more turns
-if (st.session_state.all_turns and 
-    st.session_state.current_turn < len(st.session_state.all_turns)):
-    if st.button("Next Turn"):
-        next_turn()
-        st.rerun()
+# Navigation buttons
+if st.session_state.all_turns:
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.session_state.current_turn > 1:
+            if st.button("⬅️ Previous Turn"):
+                previous_turn()
+                st.rerun()
+    
+    with col2:
+        if st.session_state.current_turn < len(st.session_state.all_turns):
+            if st.button("Next Turn ➡️"):
+                next_turn()
+                st.rerun()
 
 # Show completion message
 if st.session_state.all_turns and st.session_state.current_turn >= len(st.session_state.all_turns):
