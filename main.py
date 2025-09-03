@@ -9,7 +9,7 @@ import os
 
 load_dotenv()
 
-llm = ChatGroq(model_name="llama3-8b-8192", api_key=os.getenv("GROQ_API_KEY"))
+llm = ChatGroq(model_name="llama-3.1-8b-instant", api_key=os.getenv("GROQ_API_KEY"))
 
 FOR_PROMPT = "You are a persuasive debater who always argues in favor of the topic."
 AGAINST_PROMPT = "You are a persuasive debater who always argues against the topic."
