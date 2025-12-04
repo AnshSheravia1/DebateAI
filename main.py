@@ -1,5 +1,5 @@
 from langchain_groq import ChatGroq
-from typing import TypedDict, List, Annotated, Sequence
+from typing import TypedDict, List, Annotated
 from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage
 from dotenv import load_dotenv
 from langgraph.graph import StateGraph, START, END
@@ -25,24 +25,43 @@ class DebateState(TypedDict):
 def for_agent(state: DebateState) -> DebateState:
     history = state.get("history", [])
     topic = state["topic"]
-    messages = history + [SystemMessage(content=FOR_PROMPT), HumanMessage(content=f"The topic is: {topic}")]
-    response = llm(messages)
-    history.append(HumanMessage(content=response.content))
+    # Build messages: system prompt first, then history, then current prompt
+    messages = [SystemMessage(content=f"{FOR_PROMPT} The debate topic is: {topic}")]
+    messages.extend(history)
+    if not history:
+        # First turn - just ask for opening statement
+        messages.append(HumanMessage(content=f"Make your opening argument in favor of: {topic}"))
+    else:
+        # Respond to opponent's last argument
+        messages.append(HumanMessage(content="Respond to your opponent's argument and strengthen your position."))
+    response = llm.invoke(messages)
+    new_message = AIMessage(content=response.content)
+    history.append(new_message)
     return {"history": history, "last_speaker": "for", "turn": state["turn"] + 1, "topic": topic, "max_turns": state["max_turns"]}
 
 def against_agent(state: DebateState) -> DebateState:
     history = state.get("history", [])
     topic = state["topic"]
-    messages = history + [SystemMessage(content=AGAINST_PROMPT), HumanMessage(content=f"The topic is: {topic}")]
-    response = llm(messages)
-    history.append(HumanMessage(content=response.content))
+    # Build messages: system prompt first, then history, then current prompt
+    messages = [SystemMessage(content=f"{AGAINST_PROMPT} The debate topic is: {topic}")]
+    messages.extend(history)
+    if not history:
+        # First turn - just ask for opening statement
+        messages.append(HumanMessage(content=f"Make your opening argument against: {topic}"))
+    else:
+        # Respond to opponent's last argument
+        messages.append(HumanMessage(content="Respond to your opponent's argument and strengthen your position."))
+    response = llm.invoke(messages)
+    new_message = AIMessage(content=response.content)
+    history.append(new_message)
     return {"history": history, "last_speaker": "against", "turn": state["turn"] + 1, "topic": topic, "max_turns": state["max_turns"]}
 
 def route(state: DebateState) -> str:
     if state["turn"] >= state["max_turns"]:
         return END
     else:
-        return "for_agent" if state["last_speaker"] == "against" else "against_agent"
+        last_speaker = state.get("last_speaker", "")
+        return "for_agent" if last_speaker == "against" else "against_agent"
 
 graph = StateGraph(DebateState)
 graph.add_node("for_agent", for_agent)
@@ -70,7 +89,7 @@ if 'all_turns' not in st.session_state:
 
 def start_new_debate():
     # Initialize debate state
-    initial_state = {"topic": topic, "history": [], "turn": 0, "max_turns": max_turns}
+    initial_state = {"topic": topic, "history": [], "turn": 0, "max_turns": max_turns, "last_speaker": ""}
     
     # Run the entire debate once
     final_state = app.invoke(initial_state)
